@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verwaltung der Bestellungen</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+  <style>
+    /* Modern Material Design Variables */
+    :root {
+      --md-primary-color: #3f51b5; /* Indigo */
+      --md-primary-variant: #303f9f;
+      --md-secondary-color: #ff4081; /* Pink */
+      --md-background-color: #f4f6f8;
+      --md-surface-color: #ffffff;
+      --md-error-color: #d32f2f;
+      --md-on-primary: #ffffff;
+      --md-on-secondary: #ffffff;
+      --md-on-background: #212121;
+      --md-on-surface: #212121;
+      --md-on-error: #ffffff;
+      --md-border-radius: 8px;
+      --md-shadow-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+      --md-shadow-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+      --md-shadow-3: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+      --md-padding: 16px;
+      --md-gap: 16px;
+      --md-warning-color: #f57c00;
+      --md-success-color: #388e3c;
+      --md-info-color: #1976d2;
+      --md-disabled-color: #bdbdbd;
+    }
+
+    /* Basic Reset and Body Styles */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: var(--md-background-color);
+      color: var(--md-on-background);
+      line-height: 1.6;
+    }
+    body.modal-open {
+        overflow: hidden;
+    }
+    
+    /* Splash Screen Styles */
+    #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--md-surface-color);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transition: opacity 0.5s ease-out;
+        opacity: 1;
+    }
+    #splash-screen.hidden {
+        opacity: 0;
+        pointer-events: none; /* Make it unclickable when hidden */
+    }
+    #splash-screen h2 {
+        color: var(--md-primary-color);
+        font-weight: 500;
+    }
+    #progress-bar-container {
+        width: 70%;
+        max-width: 400px;
+        height: 10px;
+        background-color: #e0e0e0;
+        border-radius: var(--md-border-radius);
+        overflow: hidden;
+        margin-top: 16px;
+    }
+    #progress-bar {
+        width: 0%;
+        height: 100%;
+        background-color: var(--md-primary-color);
+        transition: width 0.2s linear;
+    }
+    #progress-text {
+        margin-top: 12px;
+        font-weight: 500;
+        color: var(--md-on-surface);
+    }
+
+    /* Header & Navigation Tabs */
+    header {
+      background-color: var(--md-primary-color);
+      color: var(--md-on-primary);
+      padding: 16px 24px;
+      box-shadow: var(--md-shadow-2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 { margin: 0; font-size: 1.5rem; font-weight: 500; }
+
+    nav.tabs {
+      display: flex;
+      background-color: var(--md-primary-color);
+      box-shadow: var(--md-shadow-1);
+    }
+    .tab-link {
+      flex-grow: 1;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      color: rgba(255,255,255,0.8);
+      border-bottom: 3px solid transparent;
+      transition: background-color 0.3s, border-bottom 0.3s;
+      font-weight: 500;
+    }
+    .tab-link:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+    .tab-link.active {
+      color: var(--md-on-primary);
+      border-bottom: 3px solid var(--md-secondary-color);
+    }
+
+    /* Main Content Area */
+    main {
+      padding: 24px;
+    }
+    .page-content {
+      display: none; /* Hidden by default, shown by JS */
+    }
+    .page-content.active {
+      display: block;
+    }
+    
+    /* Global Search */
+    .global-search-container {
+      margin-bottom: 24px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #ccc;
+      border-radius: var(--md-border-radius);
+      font-size: 1rem;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--md-primary-color);
+      box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.2);
+    }
+    
+    #globalSearchResults {
+      background-color: var(--md-surface-color);
+      border-radius: var(--md-border-radius);
+      box-shadow: var(--md-shadow-2);
+      padding: var(--md-padding);
+    }
+    .search-result-category { margin-top: 16px; }
+    .search-result-category:first-child { margin-top: 0; }
+    .search-result-category h3 {
+        margin: 0 0 12px 0;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--md-primary-color);
+        color: var(--md-primary-color);
+        font-size: 1.3rem;
+    }
+    .search-result-item {
+        padding: 12px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        border-bottom: 1px solid #eee;
+    }
+    .search-result-item:last-child { border-bottom: none; }
+    .search-result-item:hover { background-color: #f0f0f0; }
+    .search-result-item .item-name { font-weight: 500; }
+    .search-result-item .item-details { font-size: 0.9em; color: #757575; }
+
+
+    /* Card Styles for all lists */
+    .card {
+      background-color: var(--md-surface-color);
+      border-radius: var(--md-border-radius);
+      padding: var(--md-padding);
+      margin-bottom: var(--md-gap);
+      box-shadow: var(--md-shadow-1);
+      border-left: 5px solid transparent;
+      transition: box-shadow 0.3s, background-color 0.5s;
+    }
+    .card:hover {
+        box-shadow: var(--md-shadow-2);
+    }
+
+    .card.highlight {
+      background-color: #e8eaf6; /* Light indigo for highlight */
+    }
+
+    .card.priority-urgent { border-left-color: var(--md-error-color); }
+    .card.priority-notDeliverable { border-left-color: var(--md-warning-color); }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 500;
+      margin: 0;
+      flex-grow: 1;
+    }
+    .card-title strong {
+        cursor: pointer;
+        text-decoration: none;
+    }
+     .card-title strong:hover {
+        text-decoration: underline;
+     }
+
+    .card-content p {
+      margin: 4px 0 12px 0;
+      color: #616161;
+    }
+    .card-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+
+    /* Priority Tags */
+    .priority-tags {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .tag {
+        padding: 4px 10px;
+        border-radius: 16px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #fff;
+    }
+    .tag.priority-urgent { background-color: var(--md-error-color); }
+    .tag.priority-notDeliverable { background-color: var(--md-warning-color); }
+
+    /* Checkbox */
+    input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none;
+      width: 20px; height: 20px;
+      border: 2px solid #757575;
+      border-radius: var(--md-border-radius);
+      cursor: pointer;
+      position: relative;
+      top: 4px;
+      transition: all 0.2s;
+    }
+    input[type="checkbox"]:checked {
+      background-color: var(--md-primary-color);
+      border-color: var(--md-primary-color);
+    }
+    input[type="checkbox"]:checked::before {
+      content: '\2713';
+      font-size: 16px;
+      color: var(--md-on-primary);
+      position: absolute;
+      top: -2px; left: 1px;
+    }
+
+    /* 'To Order' Item Specifics */
+    .item-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .item-card-header .card-title {
+        font-size: 1.1rem;
+    }
+
+    /* 'Ordered' Group Specifics */
+    .order-group-card .card-header {
+        flex-direction: column;
+        gap: 8px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+    }
+    .order-group-header-main {
+        font-size: 1.2rem;
+        font-weight: 500;
+    }
+    .order-group-header-sub {
+        font-size: 0.9rem;
+        color: #757575;
+    }
+    .order-items-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .order-item {
+        padding: 12px 8px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .order-item:last-child {
+        border-bottom: none;
+    }
+    .order-item strong {
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    .order-item-details {
+        font-size: 0.9rem;
+        color: #616161;
+        margin-left: 8px;
+    }
+    .delivery-photos-container {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    /* Buttons */
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: var(--md-border-radius);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      transition: background-color 0.3s, box-shadow 0.3s;
+      outline: none;
+    }
+    button.primary {
+      background-color: var(--md-primary-color);
+      color: var(--md-on-primary);
+      box-shadow: var(--md-shadow-1);
+    }
+    button.primary:hover {
+      background-color: var(--md-primary-variant);
+      box-shadow: var(--md-shadow-2);
+    }
+    button.secondary {
+      background-color: var(--md-surface-color);
+      color: var(--md-primary-color);
+      border: 1px solid var(--md-primary-color);
+    }
+     button.secondary:hover {
+      background-color: rgba(63, 81, 181, 0.05);
+    }
+    button.delete {
+      background-color: transparent;
+      color: var(--md-error-color);
+    }
+    button.delete:hover {
+      background-color: rgba(211, 47, 47, 0.1);
+    }
+    button.undo {
+       background-color: transparent;
+       color: var(--md-info-color);
+       border: 1px solid var(--md-info-color);
+    }
+    button.undo:hover {
+      background-color: rgba(25, 118, 210, 0.1);
+    }
+    .card-actions .delete {
+        margin-left: auto; /* Pushes delete button to the far right */
+    }
+
+    /* Floating Action Button (FAB) */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background-color: var(--md-secondary-color);
+      color: var(--md-on-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      border: none;
+      box-shadow: var(--md-shadow-3);
+      cursor: pointer;
+      z-index: 999;
+      transition: background-color 0.3s, transform 0.3s;
+    }
+    .fab:hover {
+      background-color: #f50057; /* Darker pink */
+      transform: scale(1.05);
+    }
+    
+    /* NUOVO CODICE: Stili per il pulsante delle notifiche */
+    .fab-notifications {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        height: 56px;
+        border-radius: 28px;
+        background-color: var(--md-info-color);
+        color: var(--md-on-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 0 20px;
+        border: none;
+        box-shadow: var(--md-shadow-3);
+        cursor: pointer;
+        z-index: 998;
+        transition: background-color 0.3s, transform 0.3s;
+        font-size: 1rem;
+        font-weight: 500;
+        display: none; /* Nascosto di default, mostrato da JS */
+    }
+    .fab-notifications:hover {
+        background-color: #1565c0; /* Darker info color */
+        transform: scale(1.05);
+    }
+    .fab-notifications i {
+        font-size: 22px;
+    }
+
+
+    /* Modal Styles */
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: var(--md-gap); opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+    .modal.show { opacity: 1; visibility: visible; }
+    .modal-content { background-color: var(--md-surface-color); border-radius: var(--md-border-radius); padding: 24px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: var(--md-shadow-3); position: relative; transform: scale(0.95); transition: transform 0.3s; }
+    .modal.show .modal-content { transform: scale(1); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;}
+    .modal-header h2 { margin: 0; font-size: 1.4rem; color: var(--md-primary-color); }
+    .close-button { font-size: 2rem; cursor: pointer; color: #757575; background: none; border: none; padding: 0; line-height: 1;}
+    
+    label { font-weight: 500; display: block; margin-bottom: 8px; color: #424242; font-size: 0.9rem; }
+    input[type="text"], input[type="number"], input[type="file"], textarea, select {
+        width: 100%; padding: 12px; border: 1px solid #bdbdbd; border-radius: var(--md-border-radius); margin-bottom: var(--md-gap); font-size: 1rem; font-family: 'Roboto', sans-serif; transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--md-primary-color); box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.2); }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+    .modal-actions button { padding: 10px 20px; }
+    button[title="Foto aufnehmen"] {
+      background-color: var(--md-surface-color); color: var(--md-primary-color); border: 1px solid var(--md-primary-color); padding: 8px; width: 42px; height: 42px; border-radius: 50%; font-size: 20px; text-transform: none; }
+    
+    /* Notifications Toast */
+    .notifications { position: fixed; bottom: 20px; left: 20px; z-index: 2000; }
+    .toast { color: #fff; padding: 14px 24px; border-radius: var(--md-border-radius); margin-top: 8px; box-shadow: var(--md-shadow-2); opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; transform: translateY(20px); font-weight: 500; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { background-color: var(--md-success-color); }
+    .toast.error { background-color: var(--md-error-color); }
+    .toast.info { background-color: var(--md-info-color); }
+    
+    /* Warning style */
+    .warning-banner {
+        background-color: var(--md-warning-color);
+        color: white;
+        padding: 12px;
+        border-radius: var(--md-border-radius);
+        margin-bottom: var(--md-gap);
+        text-align: center;
+        font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="splash-screen">
+    <h2>Wird geladen...</h2>
+    <div id="progress-bar-container">
+        <div id="progress-bar"></div>
+    </div>
+    <div id="progress-text">0%</div>
+  </div>
+
+
+  <header>
+    <h1>Verwaltung der Bestellungen</h1>
+  </header>
+
+  <nav class="tabs">
+    <div class="tab-link active" onclick="showPage('toOrder')">Zu bestellen</div>
+    <div class="tab-link" onclick="showPage('ordered')">Bestellt</div>
+    <div class="tab-link" onclick="showPage('arrived')">Archiv</div>
+  </nav>
+
+  <div class="notifications" id="notifications"></div>
+
+  <main>
+    <div class="global-search-container">
+        <input type="text" id="globalSearchInput" class="search-input" placeholder="Globale Suche: Artikel, Bestellnummer, Info...">
+    </div>
+    <div id="globalSearchResults" style="display: none;"></div>
+
+    <div id="tabsContainer">
+        <div id="page-toOrder" class="page-content active">
+            <div class="page-header">
+                <button id="btnBulkOrderTop" type="button" class="primary">Ausgewählte bestellen</button>
+            </div>
+            <ul id="toOrderList" style="list-style: none; padding: 0;"></ul>
+            <div class="page-footer" style="display: flex; justify-content: center; margin-top: 24px;">
+                <button id="btnBulkOrderBottom" type="button" class="primary">Ausgewählte bestellen</button>
+            </div>
+            <button id="btnAdd" class="fab" title="Neuen Artikel hinzufügen">
+                <i class="material-icons">add</i>
+            </button>
+            <button id="btnEnableNotifications" class="fab-notifications" title="Benachrichtigungen für dringende aktivieren">
+                <i class="material-icons">notifications_active</i>
+                <span>Benachrichtigungen für dringende aktivieren</span>
+            </button>
+        </div>
+
+        <div id="page-ordered" class="page-content">
+            <div class="warning-banner" id="overdueWarning" style="display:none;">⚠️ Es gibt Bestellungen, die länger als 30 Tage offen sind!</div>
+            <ul id="orderedList" style="list-style: none; padding: 0;"></ul>
+        </div>
+
+        <div id="page-arrived" class="page-content">
+            <ul id="arrivedList" style="list-style: none; padding: 0;"></ul>
+        </div>
+    </div>
+  </main>
+    
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle"></h2>
+        <button class="close-button" id="btnCloseModal">×</button>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div id="cameraModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Foto aufnehmen</h2>
+            <button class="close-button" id="btnCloseCameraModal">×</button>
+        </div>
+        <div id="cameraModalBody"></div>
+    </div>
+  </div>
+  <div id="photoModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="photoModalTitle">Lieferschein</h2>
+            <button class="close-button" id="btnClosePhotoModal">×</button>
+        </div>
+        <div id="photoModalBody" style="text-align:center;"></div>
+    </div>
+  </div>
+  
+  <input type="file" accept="image/*" capture="environment" id="capturePhotoInput" style="display:none;">
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    // --- TAB NAVIGATION LOGIC ---
+    window.showPage = function(pageId, event) {
+      document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+      document.getElementById(`page-${pageId}`).classList.add('active');
+      
+      document.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
+      // Find the correct tab to activate by its onclick attribute content
+      const tabLinks = document.querySelectorAll('.tab-link');
+      for(let tab of tabLinks){
+        if(tab.getAttribute('onclick').includes(`'${pageId}'`)){
+          tab.classList.add('active');
+          break;
+        }
+      }
+    }
+
+    // --- MODAL & SCROLL LOCK ---
+    window.openModal = function(title, contentHTML) {
+        document.body.classList.add('modal-open');
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalBody').innerHTML = contentHTML;
+        document.getElementById('modal').classList.add('show');
+    };
+    window.closeModal = function() {
+        document.body.classList.remove('modal-open');
+        document.getElementById('modal').classList.remove('show'); 
+    };
+    const closeModalWithBodyCheck = () => {
+        if (!document.querySelector('.modal.show')) {
+            document.body.classList.remove('modal-open');
+        }
+    };
+    window.closeCameraModal = function() {
+        if(window.currentStream) {
+            window.currentStream.getTracks().forEach(track => track.stop());
+            window.currentStream = null;
+        }
+        document.getElementById('cameraModal').classList.remove('show');
+        closeModalWithBodyCheck();
+    };
+    window.closePhotoModal = function() {
+        document.getElementById('photoModal').classList.remove('show');
+        closeModalWithBodyCheck();
+    };
+
+
+    window.addEventListener("DOMContentLoaded", () => {
+      // --- SPLASH SCREEN LOGIC ---
+      const splashScreen = document.getElementById('splash-screen');
+      const progressBar = document.getElementById('progress-bar');
+      const progressText = document.getElementById('progress-text');
+      let progress = 0;
+      let progressInterval = null;
+
+      const startLoadingAnimation = () => {
+          progressInterval = setInterval(() => {
+              progress += 1;
+              if (progress <= 90) { // Simulate loading up to 90%
+                  progressBar.style.width = progress + '%';
+                  progressText.textContent = progress + '%';
+              } else {
+                  clearInterval(progressInterval); // Stop at 90% and wait for Firebase
+              }
+          }, 20); // Interval time for smooth animation
+      };
+      
+      const finishLoadingAnimation = () => {
+          if(progressInterval) clearInterval(progressInterval);
+          progressBar.style.width = '100%';
+          progressText.textContent = '100%';
+          
+          setTimeout(() => {
+              splashScreen.classList.add('hidden');
+              // Optional: remove splash screen from DOM after transition
+              setTimeout(() => {
+                  if (splashScreen.parentNode) {
+                      splashScreen.parentNode.removeChild(splashScreen);
+                  }
+              }, 500); // Must match CSS transition duration
+          }, 400); // Short delay to show 100%
+      };
+      
+      startLoadingAnimation(); // Start the loading animation immediately
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBz4mc_qXdMpTtHEVM1I1-SxmX_Sxdo0Cs",
+        authDomain: "exopraxisstation.firebaseapp.com",
+        databaseURL: "https://exopraxisstation-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "exopraxisstation",
+        storageBucket: "exopraxisstation.firebasestorage.app",
+        messagingSenderId: "86671059664",
+        appId: "1:86671059664:web:f5a4cb368b5a3249814cd5"
+      };
+      const appFirebase = initializeApp(firebaseConfig);
+      const database = getDatabase(appFirebase);
+
+      window.products = [];
+      window.currentOrderNumberForCapture = null;
+      window.currentStream = null;
+      window.capturedDeliveryPhoto = null;
+
+      // --- GERMAN LANGUAGE STRINGS ---
+      const STR = {
+          ITEM_NOT_FOUND: "Artikel nicht gefunden.",
+          NO_HISTORY: "Keine Historie vorhanden.",
+          PUSH_SENT: "Dringende Benachrichtigung gesendet.",
+          PUSH_ERROR: "Fehler beim Senden der Benachrichtigung: ",
+          CRITICAL_ERROR: "Kritischer Fehler in der Funktion sendUrgentNotification:",
+          DATA_LOAD_ERROR: "Daten konnten nicht von Firebase geladen werden.",
+          CAMERA_ERROR: "Kamera konnte nicht geöffnet werden: ",
+          PHOTO_CAPTURED: "Foto aufgenommen.",
+          PHOTO_UPDATED: "Foto aktualisiert.",
+          PHOTO_READY: "Foto aufgenommen und zum Speichern bereit.",
+          ADD_ITEM_TITLE: "Neuen Artikel hinzufügen",
+          ADD_ITEM_REQ_FIELDS: "Artikelname und Ihr Name sind erforderlich.",
+          ITEM_ADDED: "Produkt hinzugefügt.",
+      };
+      
+      // NUOVO CODICE: Logica per le notifiche push
+      const VAPID_PUBLIC_KEY = 'INCOLLA-QUI-LA-TUA-VAPID-PUBLIC-KEY'; // <-- IMPORTANTE!
+
+      const urlBase64ToUint8Array = (base64String) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      };
+
+      const checkNotificationPermission = () => {
+        const btn = document.getElementById('btnEnableNotifications');
+        if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
+            if (Notification.permission === 'granted') {
+                btn.style.display = 'none'; // Già concesse, nascondi il pulsante
+            } else if (Notification.permission !== 'denied') {
+                btn.style.display = 'flex'; // Mostra il pulsante se non sono negate
+            }
+        }
+      };
+
+      const subscribeUser = async () => {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('Notification permission granted.');
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+                });
+                
+                // Invia la sottoscrizione al backend
+                await fetch('/api/save-subscription', {
+                    method: 'POST',
+                    body: JSON.stringify(subscription),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                window.showToast("Benachrichtigungen aktiviert!", "success");
+                document.getElementById('btnEnableNotifications').style.display = 'none';
+            } else {
+                window.showToast("Benachrichtigungen nicht aktiviert.", "info");
+            }
+        } catch (error) {
+            console.error('Failed to subscribe the user: ', error);
+            window.showToast("Fehler bei der Aktivierung der Benachrichtigungen.", "error");
+        }
+      };
+      
+      const triggerPushNotification = async (product) => {
+          const payload = {
+            title: `DRINGEND: ${product.name}`,
+            body: `Von ${product.colleagueName} hinzugefügt. Info: ${product.info || 'Keine'}`,
+            icon: '/path/to/icon.png' // Opzionale: aggiungi un'icona
+          };
+          
+          try {
+              await fetch('/api/trigger-push', {
+                  method: 'POST',
+                  body: JSON.stringify(payload),
+                  headers: { 'Content-Type': 'application/json' }
+              });
+          } catch(error) {
+              console.error('Error triggering push notification:', error);
+          }
+      };
+
+      // Registra il Service Worker
+      if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.log('Service Worker registration failed', err));
+      }
+      // FINE NUOVO CODICE PUSH
+
+      // --- CORE LOGIC ---
+      
+      window.openItemHistory = function(productId) {
+          const product = window.products.find(p => p.id === productId);
+          if (!product) { alert(STR.ITEM_NOT_FOUND); return; }
+          let modalContent = ``;
+          if (product.history && product.history.length > 0) {
+            product.history.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            product.history.forEach(ev => {
+              let eventText = "";
+              const date = new Date(ev.date).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+              if(ev.event === "added") {
+                eventText = `Hinzugefügt von <strong>${ev.by}</strong> am ${date}`;
+                if (product.info) eventText += `<br><strong>Info:</strong> ${product.info}`;
+              } else if(ev.event === "ordered") {
+                eventText = `Bestellung aufgegeben von <strong>${ev.by}</strong> am ${date} (Bestellnummer: ${ev.orderNumber}, Info: ${ev.orderInfo}, Menge: ${ev.quantity})`;
+              } else if(ev.event === "received") {
+                eventText = `Empfangen von <strong>${ev.by}</strong> am ${date} (Menge: ${ev.quantity})`;
+              } else {
+                eventText = `${ev.event} von <strong>${ev.by}</strong> am ${date}`;
+              }
+              modalContent += `<p style="border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px;">${eventText}</p>`;
+            });
+          } else {
+            modalContent += `<p>${STR.NO_HISTORY}</p>`;
+          }
+          window.openModal(`Verlauf von: ${product.name}`, modalContent);
+      };
+      
+      // La vecchia funzione ntfy.sh rimane, le notifiche push sono un sistema aggiuntivo
+      window.sendUrgentNotification = function(product) {
+        // NUOVO CODICE: Chiama la funzione per inviare notifiche push native
+        triggerPushNotification(product); 
+        
+        try {
+          if (!product || !product.name) return;
+          const ntfyTopic = "ordini-urgenti-praxis-augsburg-2025"; 
+          const messageBody = `Info: ${product.info || 'Keine'}\nMenge: ${product.quantity || 'N/A'}\nHinzugefügt von: ${product.colleagueName || 'N/D'}`;
+          fetch(`https://ntfy.sh/${ntfyTopic}`, {
+            method: 'POST',
+            headers: { 'Title': `DRINGENDE BESTELLUNG: ${product.name}`, 'Priority': 'urgent', 'Tags': 'package,warning' },
+            body: messageBody
+          })
+          .then(response => {
+            if (!response.ok) throw new Error(`ntfy Server-Fehler: ${response.statusText}`);
+            window.showToast(STR.PUSH_SENT, "success");
+          })
+          .catch(error => {
+            console.error("Fehler beim Senden der Push-Benachrichtigung:", error);
+            window.showToast(`${STR.PUSH_ERROR}${error.message}`, "error");
+          });
+        } catch (e) {
+            console.error(STR.CRITICAL_ERROR, e);
+        }
+      };
+
+      window.showToast = function(message, type = "success") {
+        const notifications = document.getElementById("notifications");
+        const toast = document.createElement("div");
+        toast.className = `toast show ${type}`;
+        if(type === 'info') toast.classList.add('info');
+        toast.textContent = message;
+        notifications.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.remove("show");
+          setTimeout(() => { if (toast.parentNode) { toast.parentNode.removeChild(toast); } }, 500);
+        }, 3000);
+      };
+
+      window.checkOverdueOrders = function() {
+        let overdueExists = false;
+        const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+        window.products.forEach(p => {
+          if(p.status === 'ordered' && p.orderDate) {
+            if ((new Date() - new Date(p.orderDate)) > thirtyDaysInMs) {
+                overdueExists = true;
+            }
+          }
+        });
+        document.getElementById("overdueWarning").style.display = overdueExists ? "block" : "none";
+      };
+
+      window.deleteOldArrivedOrders = function() {
+        const ninetyDaysInMs = 90 * 24 * 60 * 60 * 1000;
+        const now = new Date();
+        window.products.forEach(product => {
+          if (product.status === 'arrived' && product.arrivedDate) {
+            if (now - new Date(product.arrivedDate) > ninetyDaysInMs) {
+              remove(ref(database, 'products/' + product.id))
+                .catch(error => console.error("Fehler beim Löschen des alten Eintrags:", error));
+            }
+          }
+        });
+      };
+
+      window.loadProductsFromFirebase = function() {
+        const productsRef = ref(database, 'products');
+        onValue(productsRef, (snapshot) => {
+          const data = snapshot.val();
+          window.products = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+          window.deleteOldArrivedOrders();
+          window.renderAll();
+          finishLoadingAnimation(); // <--- HIDE SPLASH SCREEN ON SUCCESS
+        }, (error) => {
+            console.error("Firebase read failed:", error);
+            window.showToast(STR.DATA_LOAD_ERROR, "error");
+            finishLoadingAnimation(); // <--- HIDE SPLASH SCREEN ON ERROR TOO
+        });
+      };
+      
+      window.openCameraModal = function() {
+        document.body.classList.add('modal-open');
+        const cameraContent = `
+          <video id="cameraVideo" autoplay playsinline style="width:100%; border-radius: var(--md-border-radius);"></video>
+          <div class="modal-actions">
+            <button class="secondary" onclick="window.closeCameraModal()">Abbrechen</button>
+            <button class="primary" onclick="window.handleTakePhoto(event)">Foto aufnehmen</button>
+          </div>
+        `;
+        document.getElementById('cameraModalBody').innerHTML = cameraContent;
+        document.getElementById('cameraModal').classList.add('show');
+        if(window.currentStream) { window.currentStream.getTracks().forEach(track => track.stop()); }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
+          .then(stream => {
+            const video = document.getElementById("cameraVideo");
+            video.srcObject = stream;
+            video.play();
+            window.currentStream = stream;
+          })
+          .catch(err => {
+            alert(STR.CAMERA_ERROR + err);
+            window.closeCameraModal();
+          });
+      };
+      
+      window.handleTakePhoto = function(e) { e.stopPropagation(); window.takePhoto(); };
+      
+      window.takePhoto = function() {
+        const video = document.getElementById("cameraVideo");
+        if (!video || !video.srcObject || video.videoWidth === 0) { alert("Kamera ist nicht bereit. Bitte warten Sie einen Moment."); return; }
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        window.closeCameraModal();
+        const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+        window.products.forEach(p => {
+          if(p.orderNumber === window.currentOrderNumberForCapture && ['arrived', 'ordered'].includes(p.status)) {
+            const newPhotos = p.deliveryPhotos ? [...p.deliveryPhotos, dataURL] : [dataURL];
+            update(ref(database, `products/${p.id}`), { deliveryPhotos: newPhotos });
+          }
+        });
+        window.currentOrderNumberForCapture = null;
+        window.showToast(STR.PHOTO_CAPTURED, "success");
+      };
+      
+      window.openPartialCameraModal = function() {
+        document.body.classList.add('modal-open');
+        if(window.currentStream) { window.currentStream.getTracks().forEach(track => track.stop()); }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
+          .then(stream => {
+            document.getElementById('cameraModalBody').innerHTML = `
+                <video id="partialCameraVideo" autoplay playsinline style="width:100%; border-radius: var(--md-border-radius);"></video>
+                <div class="modal-actions">
+                  <button class="secondary" onclick="window.closePartialCameraModal()">Abbrechen</button>
+                  <button class="primary" onclick="window.takePartialPhoto()">Foto aufnehmen</button>
+                </div>`;
+            document.getElementById('cameraModal').classList.add('show');
+            const video = document.getElementById("partialCameraVideo");
+            video.srcObject = stream; video.play();
+            window.currentStream = stream;
+          })
+          .catch(err => alert(STR.CAMERA_ERROR + err));
+      };
+      
+      window.closePartialCameraModal = function() {
+          if(window.currentStream) { window.currentStream.getTracks().forEach(track => track.stop()); window.currentStream = null; }
+          document.getElementById('cameraModal').classList.remove('show');
+          closeModalWithBodyCheck();
+      };
+      
+      window.takePartialPhoto = function() {
+          const video = document.getElementById("partialCameraVideo");
+          if (!video || !video.srcObject || video.videoWidth === 0) { alert("Kamera ist nicht bereit. Bitte warten Sie einen Moment."); return; }
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+          canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+          window.capturedDeliveryPhoto = canvas.toDataURL('image/jpeg', 0.7);
+          window.closePartialCameraModal();
+          window.showToast(STR.PHOTO_READY, "success");
+      };
+      
+      document.getElementById("capturePhotoInput").addEventListener("change", function(e) {
+        if (this.files && this.files[0] && window.currentOrderNumberForCapture) {
+          window.compressImage(this.files[0], 0.7, compressedDataUrl => {
+            window.products.forEach(p => {
+              if(p.orderNumber === window.currentOrderNumberForCapture && ['arrived', 'ordered'].includes(p.status)) {
+                const newPhotos = p.deliveryPhotos ? [...p.deliveryPhotos, compressedDataUrl] : [dataURL];
+                update(ref(database, `products/${p.id}`), { deliveryPhotos: newPhotos });
+              }
+            });
+            window.currentOrderNumberForCapture = null;
+            window.showToast(STR.PHOTO_UPDATED, "success");
+          });
+        }
+      });
+      
+      window.compressImage = function(file, quality, callback) {
+        const reader = new FileReader();
+        reader.onload = event => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxWidth = 800; const ratio = maxWidth / img.width;
+            canvas.width = maxWidth; canvas.height = img.height * ratio;
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            callback(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      };
+
+      window.openAddModal = function() {
+        const modalContent = `
+          <label for="newName">Artikelname:</label>
+          <input type="text" id="newName" required>
+          <label for="colleagueName">Ihr Name:</label>
+          <input type="text" id="colleagueName" required>
+          <label for="newInfo">Info (optional):</label>
+          <textarea id="newInfo"></textarea>
+          <label for="newQuantity">Menge (optional):</label>
+          <input type="number" id="newQuantity" min="1">
+          <label for="newPriority">Priorität:</label>
+          <select id="newPriority">
+            <option value="normal">Normal</option>
+            <option value="dringend">Dringend</option>
+            <option value="notDeliverable">Nicht lieferbar</option>
+          </select>
+          <div class="modal-actions">
+            <button class="primary" onclick="window.addProduct()">Hinzufügen</button>
+          </div>
+        `;
+        window.openModal(STR.ADD_ITEM_TITLE, modalContent);
+      };
+
+      window.addProduct = function() {
+        const articleName = document.getElementById('newName').value.trim();
+        const colleagueName = document.getElementById('colleagueName').value.trim();
+        if (!articleName || !colleagueName) { alert(STR.ADD_ITEM_REQ_FIELDS); return; }
+        const info = document.getElementById('newInfo').value.trim();
+        const quantityInput = document.getElementById('newQuantity').value;
+        const priority = document.getElementById('newPriority').value;
+        let quantity = quantityInput ? parseInt(quantityInput, 10) : 0;
+        if (isNaN(quantity) || quantity < 0) quantity = 0;
+
+        const product = { name: articleName, colleagueName: colleagueName, info: info, status: 'toOrder', dateAdded: new Date().toISOString(), quantity: quantity, quantityArrived: 0, priority: priority, history: [{ event: "added", by: colleagueName, date: new Date().toISOString() }] };
+        const newProductRef = push(ref(database, 'products'));
+        product.id = newProductRef.key;
+        set(newProductRef, product)
+          .then(() => {
+            window.showToast(STR.ITEM_ADDED, "success");
+            if (product.priority === 'dringend') { window.sendUrgentNotification(product); } // <-- TRIGGER
+            window.closeModal();
+          })
+          .catch(error => { console.error("Error saving product:", error); window.showToast("Fehler beim Speichern.", "error"); });
+      };
+      
+      window.openEditModal = function(id) {
+        const product = window.products.find(p => p.id === id);
+        if (!product) return;
+        if(product.status !== 'toOrder'){ alert("Änderung nicht erlaubt, da der Artikel bereits bestellt wurde."); return; }
+        const modalContent = `
+          <label>Artikelname:</label>
+          <input type="text" id="editName" value="${product.name}" required>
+          <label>Info (optional):</label>
+          <textarea id="editInfo">${product.info || ''}</textarea>
+          <label>Menge:</label>
+          <input type="number" id="editQuantity" value="${product.quantity > 0 ? product.quantity : ''}" placeholder="(optional)" min="1">
+          <label>Priorität:</label>
+          <select id="editPriority">
+            <option value="normal" ${product.priority === 'normal' ? 'selected' : ''}>Normal</option>
+            <option value="dringend" ${product.priority === 'dringend' ? 'selected' : ''}>Dringend</option>
+            <option value="notDeliverable" ${product.priority === 'notDeliverable' ? 'selected' : ''}>Nicht lieferbar</option>
+          </select>
+          <div class="modal-actions">
+            <button class="primary" onclick="window.saveEdit('${id}')">Speichern</button>
+          </div>
+        `;
+        window.openModal("Artikel bearbeiten", modalContent);
+      };
+
+      window.saveEdit = function(id) {
+        const product = window.products.find(p => p.id === id);
+        if (!product || !confirm("Änderungen speichern?")) return;
+        const name = document.getElementById('editName').value.trim();
+        const info = document.getElementById('editInfo').value.trim();
+        const quantityInput = document.getElementById('editQuantity').value;
+        const priority = document.getElementById('editPriority').value;
+        let quantity = quantityInput ? parseInt(quantityInput, 10) : 0;
+        if (isNaN(quantity) || quantity < 0) quantity = 0;
+        if (!name) { alert("Artikelname ist erforderlich."); return; }
+
+        if (priority === 'dringend' && product.priority !== 'dringend') {
+          const updatedProductDataForSms = { ...product, name, info, quantity, priority };
+          window.sendUrgentNotification(updatedProductDataForSms); // <-- TRIGGER
+        }
+        update(ref(database, `products/${id}`), { name, info, quantity, priority })
+          .then(() => { window.showToast("Produkt aktualisiert.", "success"); window.closeModal(); })
+          .catch(error => { console.error("Error updating:", error); window.showToast("Fehler bei der Aktualisierung.", "error"); });
+      };
+
+      window.deleteProduct = function(id) {
+        if (!confirm("Wirklich löschen?")) return;
+        remove(ref(database, `products/${id}`))
+          .then(() => window.showToast("Produkt gelöscht.", "success"))
+          .catch(error => { console.error("Error deleting:", error); window.showToast("Fehler beim Löschen.", "error"); });
+      };
+
+      window.openBulkOrderModal = function() {
+        const selectedIds = [...document.querySelectorAll('#toOrderList .select-item:checked')].map(cb => cb.dataset.id);
+        if(selectedIds.length === 0) { alert("Bitte wählen Sie mindestens einen Artikel aus."); return; }
+        let itemsHtml = '';
+        selectedIds.forEach(id => {
+          const product = window.products.find(p => p.id === id);
+          if(product) {
+            itemsHtml += `
+                <div style="margin-top: 1em; border-top: 1px solid #eee; padding-top: 1em;">
+                  <strong>${product.name}</strong> ${product.colleagueName ? `<em>(von ${product.colleagueName})</em>` : ""}
+                  <label for="bulkOrderQuantity_${product.id}">Menge bestellt:</label>
+                  <input type="number" id="bulkOrderQuantity_${product.id}" value="${product.quantity || 1}" required min="1">
+                </div>`;
+          }
+        });
+        const modalContent = `
+            <label>Bestellnummer:</label><input type="text" id="bulkOrderNumber" required>
+            <label>Bestellt von (Ihr Name):</label><input type="text" id="bulkOrderName" required>
+            <label>Lieferant/Firma:</label><textarea id="bulkOrderInfo" required></textarea>
+            ${itemsHtml}
+            <div class="modal-actions">
+                <button class="primary" type="button" onclick="window.bulkOrder()">Bestellung bestätigen</button>
+            </div>
+            `;
+        window.openModal("Bestellung aufgeben", modalContent);
+      };
+      
+      window.bulkOrder = function() {
+        const orderNumber = document.getElementById('bulkOrderNumber').value.trim();
+        const orderName = document.getElementById('bulkOrderName').value.trim();
+        const orderInfo = document.getElementById('bulkOrderInfo').value.trim();
+        if (!orderNumber || !orderName || !orderInfo) { alert("Bestellnummer, Name und Lieferant sind erforderlich."); return; }
+
+        const updates = {};
+        const selectedIds = [...document.querySelectorAll('#toOrderList .select-item:checked')].map(cb => cb.dataset.id);
+        let allQuantitiesValid = true;
+        
+        selectedIds.forEach(id => {
+            const product = window.products.find(p => p.id === id);
+            const qtyValue = parseInt(document.getElementById(`bulkOrderQuantity_${id}`).value, 10);
+            if (isNaN(qtyValue) || qtyValue <= 0) { allQuantitiesValid = false; }
+            if(product) {
+                const newHistory = product.history ? [...product.history] : [];
+                newHistory.push({ event: "ordered", by: orderName, date: new Date().toISOString(), orderNumber: orderNumber, orderInfo: orderInfo, quantity: qtyValue });
+                updates[`/products/${id}/orderNumber`] = orderNumber;
+                updates[`/products/${id}/orderName`] = orderName;
+                updates[`/products/${id}/orderInfo`] = orderInfo;
+                updates[`/products/${id}/status`] = 'ordered';
+                updates[`/products/${id}/orderDate`] = new Date().toISOString();
+                updates[`/products/${id}/quantity`] = qtyValue;
+                updates[`/products/${id}/history`] = newHistory;
+                updates[`/products/${id}/prevStatus`] = product.status;
+            }
+        });
+
+        if (!allQuantitiesValid) { alert("Bitte geben Sie für jeden Artikel eine gültige Menge ein."); return; }
+        update(ref(database), updates)
+            .then(() => { window.closeModal(); window.showToast("Bestellung aufgegeben.", "success"); })
+            .catch(error => { console.error("Error placing bulk order:", error); window.showToast("Fehler bei der Bestellung.", "error"); });
+      };
+
+      window.openPartialArrivedModal = function(orderNumber) {
+        const group = window.products.filter(p => p.orderNumber === orderNumber && p.status === 'ordered');
+        if(group.length === 0) { alert("Alle Artikel dieser Bestellung sind bereits als angekommen markiert."); return; }
+        let itemsHtml = '';
+        group.forEach(item => {
+          const remaining = item.quantity - (Number(item.quantityArrived) || 0);
+          itemsHtml += `
+              <div style="margin-top: 1em; border-top: 1px solid #eee; padding-top: 1em;">
+                <strong>${item.name}</strong> (Bestellt: ${item.quantity}, Rest: ${remaining})
+                <label for="partialQty_${item.id}">Menge angekommen:</label>
+                <input type="number" id="partialQty_${item.id}" min="0" max="${remaining}" value="0" required>
+              </div>`;
+        });
+        const modalContent = `
+            <label>Empfangen von (erforderlich):</label><input type="text" id="partialReceivedBy" required>
+            ${itemsHtml}
+            <div style="margin-top: 1em; display: flex; align-items: center; gap: 10px;">
+              <label style="margin-bottom: 0;">Lieferfoto:</label>
+              <input type="file" id="deliveryPhotoInputModal" accept="image/*">
+              <button type="button" onclick="window.openPartialCameraModal()" title="Foto aufnehmen"><i class="material-icons">photo_camera</i></button>
+            </div>
+            <div style="margin-top: 1em;">
+              <input type="checkbox" id="confirmationCheckbox" required onchange="this.nextElementSibling.style.color = this.checked ? 'var(--md-success-color)' : 'var(--md-error-color)'">
+              <label for="confirmationCheckbox" style="display: inline; color: var(--md-error-color);">Ware eingescannt und aufgeräumt?</label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="primary" onclick="window.submitPartialArrived('${orderNumber}')">Als angekommen markieren</button>
+            </div>
+            `;
+        window.openModal("Artikel angekommen", modalContent);
+      };
+      
+      window.submitPartialArrived = async function(orderNumber) {
+        if (!document.getElementById("confirmationCheckbox").checked) { alert("Bitte bestätigen Sie, dass die Ware eingescannt und aufgeräumt wurde."); return; }
+        const receivedBy = document.getElementById("partialReceivedBy").value.trim();
+        if (!receivedBy) { alert("Empfängername ist erforderlich."); return; }
+        const fileInput = document.getElementById("deliveryPhotoInputModal");
+        let deliveryPhotoToUse = window.capturedDeliveryPhoto;
+        if (fileInput && fileInput.files[0]) { deliveryPhotoToUse = await new Promise(resolve => window.compressImage(fileInput.files[0], 0.7, resolve)); }
+
+        const updates = {};
+        const group = window.products.filter(p => p.orderNumber === orderNumber && p.status === 'ordered');
+        let atLeastOneItemReceived = false;
+
+        group.forEach(item => {
+          const qty = parseInt(document.getElementById(`partialQty_${item.id}`).value, 10);
+          const remaining = item.quantity - (item.quantityArrived || 0);
+          if (!isNaN(qty) && qty > 0 && qty <= remaining) {
+            atLeastOneItemReceived = true;
+            const newArrivedQty = (item.quantityArrived || 0) + qty;
+            const newHistory = item.history ? [...item.history] : [];
+            newHistory.push({ event: "received", by: receivedBy, date: new Date().toISOString(), quantity: qty });
+            updates[`/products/${item.id}/quantityArrived`] = newArrivedQty;
+            updates[`/products/${item.id}/receivedBy`] = receivedBy;
+            updates[`/products/${item.id}/history`] = newHistory;
+            if (newArrivedQty >= item.quantity) {
+                updates[`/products/${item.id}/status`] = 'arrived';
+                updates[`/products/${item.id}/arrivedDate`] = new Date().toISOString();
+            }
+            if (deliveryPhotoToUse) {
+                const newPhotos = item.deliveryPhotos ? [...item.deliveryPhotos, deliveryPhotoToUse] : [deliveryPhotoToUse];
+                updates[`/products/${item.id}/deliveryPhotos`] = newPhotos;
+            }
+          }
+        });
+        
+        if (!atLeastOneItemReceived && !deliveryPhotoToUse) { window.showToast("Keine Änderungen vorgenommen.", "info"); return; }
+        if (!atLeastOneItemReceived && deliveryPhotoToUse) {
+            group.forEach(item => {
+                const newPhotos = item.deliveryPhotos ? [...item.deliveryPhotos, deliveryPhotoToUse] : [deliveryPhotoToUse];
+                updates[`/products/${item.id}/deliveryPhotos`] = newPhotos;
+            });
+        }
+        update(ref(database), updates)
+          .then(() => { window.capturedDeliveryPhoto = null; window.closeModal(); window.showToast("Bestellung aktualisiert.", "success"); })
+          .catch(error => { console.error("Error submitting arrival:", error); window.showToast("Fehler beim Einreichen der Ankunft.", "error"); });
+      };
+      
+      window.openDeliveryPhotoModal = function(orderNumber, index) {
+        document.body.classList.add('modal-open');
+        const group = window.products.filter(p => p.orderNumber === orderNumber);
+        if(group.length === 0) return;
+        const allPhotos = [...new Set(group.flatMap(item => item.deliveryPhotos || []))];
+        if(index < 0 || index >= allPhotos.length) return;
+        const photoUrl = allPhotos[index];
+        
+        document.getElementById('photoModalTitle').textContent = `Lieferschein ${index + 1}`;
+        document.getElementById('photoModalBody').innerHTML = `
+            <img src="${photoUrl}" style="width:100%;max-height:60vh;object-fit:contain; border-radius: var(--md-border-radius);">
+            <div class="modal-actions" style="margin-top: 1em; justify-content: space-between;">
+              <div>
+                <button type="button" class="delete" onclick="window.deleteDeliveryPhoto('${orderNumber}', '${photoUrl}')">Löschen</button>
+              </div>
+              <button type="button" class="primary" onclick="window.closePhotoModal()">Schließen</button>
+            </div>`;
+        document.getElementById('photoModal').classList.add('show');
+      };
+      
+      window.deleteDeliveryPhoto = function(orderNumber, photoUrlToDelete) {
+        if (!confirm("Lieferschein wirklich löschen?")) return;
+        const updates = {};
+        const group = window.products.filter(p => p.orderNumber === orderNumber);
+        group.forEach(item => {
+            if (item.deliveryPhotos && item.deliveryPhotos.includes(photoUrlToDelete)) {
+                updates[`/products/${item.id}/deliveryPhotos`] = item.deliveryPhotos.filter(p => p !== photoUrlToDelete);
+            }
+        });
+        update(ref(database), updates)
+            .then(() => { window.closePhotoModal(); window.closeModal(); window.showToast("Lieferschein gelöscht.", "success"); })
+            .catch(error => { console.error("Error deleting photo:", error); window.showToast("Fehler beim Löschen des Fotos.", "error"); });
+      };
+
+      window.openAddDeliveryPhoto = function(orderNumber) {
+        const modalContent = `
+            <label>Lieferfoto:</label>
+            <input type="file" id="addDeliveryPhotoInput" accept="image/*">
+            <button type="button" onclick="window.openPartialCameraModal()" title="Foto aufnehmen"><i class="material-icons">photo_camera</i></button>
+            <div class="modal-actions">
+              <button type="button" class="primary" onclick="window.submitAddDeliveryPhoto('${orderNumber}')">Hinzufügen</button>
+            </div>`;
+        window.openModal("Neuen Lieferschein hinzufügen", modalContent);
+      };
+
+      window.submitAddDeliveryPhoto = async function(orderNumber) {
+        const fileInput = document.getElementById("addDeliveryPhotoInput");
+        let deliveryPhotoToUse = window.capturedDeliveryPhoto;
+        if (fileInput && fileInput.files[0]) { deliveryPhotoToUse = await new Promise(resolve => window.compressImage(fileInput.files[0], 0.7, resolve)); }
+        if (!deliveryPhotoToUse) { alert("Bitte wählen Sie ein Foto aus oder nehmen Sie eines auf."); return; }
+        const updates = {};
+        const group = window.products.filter(p => p.orderNumber === orderNumber);
+        group.forEach(item => {
+            const newPhotos = item.deliveryPhotos ? [...item.deliveryPhotos, deliveryPhotoToUse] : [deliveryPhotoToUse];
+            updates[`/products/${item.id}/deliveryPhotos`] = newPhotos;
+        });
+        update(ref(database), updates)
+          .then(() => { window.capturedDeliveryPhoto = null; window.closeModal(); window.showToast("Lieferschein hinzugefügt.", "success"); })
+          .catch(error => { console.error("Error adding photo:", error); window.showToast("Fehler beim Hinzufügen des Fotos.", "error"); });
+      };
+
+      window.undoOrder = function(orderNumber) {
+        if (!confirm("Soll diese Bestellung wirklich rückgängig gemacht werden? Alle Artikel werden zurück in 'Zu bestellen' verschoben.")) return;
+        const updates = {};
+        window.products.forEach(p => {
+            if(p.orderNumber === orderNumber) {
+                updates[`/products/${p.id}/status`] = p.prevStatus || 'toOrder';
+                updates[`/products/${p.id}/orderNumber`] = null;
+                updates[`/products/${p.id}/orderName`] = null;
+                updates[`/products/${p.id}/orderInfo`] = null;
+                updates[`/products/${p.id}/orderDate`] = null;
+                updates[`/products/${p.id}/quantityArrived`] = null;
+                updates[`/products/${p.id}/receivedBy`] = null;
+                updates[`/products/${p.id}/arrivedDate`] = null;
+                updates[`/products/${p.id}/prevStatus`] = null;
+            }
+        });
+        update(ref(database), updates)
+            .then(() => window.showToast("Bestellung rückgängig gemacht.", "success"))
+            .catch(error => { console.error("Error undoing order:", error); window.showToast("Fehler beim Rückgängigmachen.", "error"); });
+      };
+      
+      window.deleteOrder = function(orderNumber) {
+        if (!confirm("Soll die gesamte Bestellung WIRKLICH GELÖSCHT werden? Dies kann nicht rückgängig gemacht werden.")) return;
+        const updates = {};
+        window.products.forEach(p => { if(p.orderNumber === orderNumber) { updates[`/products/${p.id}`] = null; } });
+        update(ref(database), updates)
+            .then(() => window.showToast("Bestellung gelöscht.", "success"))
+            .catch(error => { console.error("Error deleting order:", error); window.showToast("Fehler beim Löschen der Bestellung.", "error"); });
+      };
+      
+      /* --- RENDER FUNCTIONS --- */
+      const createListItem = (p) => {
+        const li = document.createElement('li');
+        li.className = 'card';
+        li.id = `item-${p.id}`; // Unique ID for search navigation
+        if (p.priority === 'notDeliverable') li.classList.add('priority-notDeliverable');
+        else if (p.priority === 'dringend') li.classList.add('priority-urgent');
+        
+        const infoHtml = p.info ? `<p>${p.info}</p>` : '';
+        const qtyHtml = p.quantity > 0 ? `<p><strong>Menge:</strong> ${p.quantity}</p>` : '';
+        let priorityTagHtml = '';
+        if (p.priority === 'dringend') {
+            priorityTagHtml = `<div class="tag priority-urgent">Dringend</div>`;
+        } else if (p.priority === 'notDeliverable') {
+            priorityTagHtml = `<div class="tag priority-notDeliverable">Nicht lieferbar</div>`;
+        }
+        
+        li.innerHTML = `
+            <div class="item-card-header">
+                <input type="checkbox" class="select-item" data-id="${p.id}">
+                <div style="flex-grow: 1;">
+                    <h3 class="card-title"><strong onclick="window.openItemHistory('${p.id}')">${p.name}</strong></h3>
+                    ${p.colleagueName ? `<span style="font-style: italic; font-size: 0.9em; color: #757575;">(von ${p.colleagueName})</span>` : ''}
+                </div>
+            </div>
+            <div class="priority-tags">${priorityTagHtml}</div>
+            <div class="card-content">
+                ${infoHtml}
+                ${qtyHtml}
+            </div>
+            <div class="card-actions">
+              <button class="secondary" onclick="window.openEditModal('${p.id}')">Bearbeiten</button>
+              <button class="delete" onclick="window.deleteProduct('${p.id}')">Löschen</button>
+            </div>`;
+        return li;
+      };
+      
+      const createOrderGroup = (orderNumber, group, isArrived) => {
+          const li = document.createElement('li');
+          li.className = 'card order-group-card';
+          li.id = `order-group-${orderNumber.replace(/[^a-zA-Z0-9]/g, '-')}`; // Unique ID for search navigation
+          const firstItem = group[0];
+          const orderInfo = firstItem.orderInfo ? ` - ${firstItem.orderInfo}` : '';
+          const orderName = firstItem.orderName ? ` (von ${firstItem.orderName})` : '';
+          const date = new Date(isArrived ? firstItem.arrivedDate : firstItem.orderDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          
+          let receivedText = '';
+          if (isArrived) {
+              const names = [...new Set(group.map(item => item.receivedBy).filter(Boolean))];
+              if (names.length > 0) receivedText = `<div class="order-group-header-sub">Empfangen von: ${names.join(', ')}</div>`;
+          }
+
+          const allPhotos = [...new Set(group.flatMap(item => item.deliveryPhotos || []))];
+          const photoButtonsHtml = allPhotos.length > 0 ? `<div class="delivery-photos-container">${allPhotos.map((photo, idx) => 
+              `<button class="secondary" onclick="window.openDeliveryPhotoModal('${orderNumber}', ${idx})">Lieferschein ${idx + 1}</button>`
+          ).join('')}</div>` : '';
+          
+          let itemsHtml = '<ul class="order-items-list">';
+          group.forEach(item => {
+              const arrivedVal = item.quantityArrived || 0;
+              const details = item.quantity > 0 ? ` (Bestellt: ${item.quantity}, Angekommen: ${arrivedVal})` : '';
+              let color = isArrived || (item.quantity > 0 && arrivedVal >= item.quantity) ? 'var(--md-success-color)' : (arrivedVal > 0 ? 'var(--md-warning-color)' : 'var(--md-on-surface)');
+              itemsHtml += `<li class="order-item">
+                  <span style="color:${color};">
+                    <strong onclick="window.openItemHistory('${item.id}')">${item.name}</strong>
+                    <span class="order-item-details">${details}</span>
+                  </span>
+                </li>`;
+          });
+          itemsHtml += '</ul>';
+
+          let footerHtml = '';
+          if (isArrived) {
+              footerHtml = `<div class="card-actions">
+                  <button class="secondary" onclick="window.openAddDeliveryPhoto('${orderNumber}')">Lieferschein Hinzufügen</button>
+                  <button class="delete" onclick="window.deleteOrder('${orderNumber}')">Löschen</button>
+                </div>`;
+          } else {
+              footerHtml = `<div class="card-actions">
+                  <button class="primary" onclick="window.openPartialArrivedModal('${orderNumber}')">Ware angekommen</button>
+                  <button class="undo" onclick="window.undoOrder('${orderNumber}')">Rückgängig</button>
+                  <button class="delete" onclick="window.deleteOrder('${orderNumber}')">Löschen</button>
+                </div>`;
+          }
+
+          li.innerHTML = `
+              <div class="card-header">
+                <div>
+                    <div class="order-group-header-main">Bestellnr: ${orderNumber}</div>
+                    <div class="order-group-header-sub">${date}${orderInfo}${orderName}</div>
+                </div>
+                ${receivedText}
+                ${photoButtonsHtml}
+              </div>
+              <div class="card-content">${itemsHtml}</div>
+              ${footerHtml}`;
+          return li;
+      };
+
+      window.renderAll = function() {
+        const toOrderList = document.getElementById('toOrderList');
+        const orderedList = document.getElementById('orderedList');
+        const arrivedList = document.getElementById('arrivedList');
+        toOrderList.innerHTML = ''; orderedList.innerHTML = ''; arrivedList.innerHTML = '';
+
+        const toOrderItems = window.products.filter(p => p.status === 'toOrder');
+        toOrderItems.sort((a,b) => (b.priority === 'dringend') - (a.priority === 'dringend') || new Date(b.dateAdded) - new Date(a.dateAdded));
+        if (toOrderItems.length === 0) toOrderList.innerHTML = '<p style="text-align:center; color: #757575; padding: 20px 0;">Keine Artikel zum Bestellen.</p>';
+        else toOrderItems.forEach(p => toOrderList.appendChild(createListItem(p)));
+
+        const orderGroups = window.products.reduce((acc, p) => {
+            if (p.orderNumber) {
+                acc[p.orderNumber] = acc[p.orderNumber] || [];
+                acc[p.orderNumber].push(p);
+            }
+            return acc;
+        }, {});
+        
+        const sortedOrderNumbers = Object.keys(orderGroups).sort((a,b) => {
+            const groupA = orderGroups[a];
+            const groupB = orderGroups[b];
+            const dateA = new Date(groupA.every(i => i.status === 'arrived') ? groupA[0].arrivedDate : groupA[0].orderDate);
+            const dateB = new Date(groupB.every(i => i.status === 'arrived') ? groupB[0].arrivedDate : groupB[0].orderDate);
+            return dateB - dateA;
+        });
+
+        let orderedCount = 0;
+        let arrivedCount = 0;
+        sortedOrderNumbers.forEach(orderNumber => {
+            const group = orderGroups[orderNumber];
+            const allArrived = group.every(item => item.status === 'arrived');
+            if (allArrived) {
+                arrivedList.appendChild(createOrderGroup(orderNumber, group, true));
+                arrivedCount++;
+            } else {
+                orderedList.appendChild(createOrderGroup(orderNumber, group, false));
+                orderedCount++;
+            }
+        });
+        if (orderedCount === 0) orderedList.innerHTML = '<p style="text-align:center; color: #757575; padding: 20px 0;">Keine Bestellten Bestellungen.</p>';
+        if (arrivedCount === 0) arrivedList.innerHTML = '<p style="text-align:center; color: #757575; padding: 20px 0;">Keine archivierten Bestellungen.</p>';
+        
+        window.checkOverdueOrders();
+      };
+
+      /* --- GLOBAL SEARCH LOGIC --- */
+      window.performGlobalSearch = function() {
+          const term = document.getElementById('globalSearchInput').value.toLowerCase();
+          const resultsContainer = document.getElementById('globalSearchResults');
+          const tabsContainer = document.getElementById('tabsContainer');
+          
+          if (term.length < 2) {
+              resultsContainer.style.display = 'none';
+              tabsContainer.style.display = 'block';
+              resultsContainer.innerHTML = '';
+              return;
+          }
+
+          tabsContainer.style.display = 'none';
+          resultsContainer.style.display = 'block';
+          
+          // Search "Zu bestellen"
+          const toOrderResults = window.products.filter(p => p.status === 'toOrder' && 
+              (p.name.toLowerCase().includes(term) || (p.info && p.info.toLowerCase().includes(term)) || (p.colleagueName && p.colleagueName.toLowerCase().includes(term)))
+          );
+
+          // Search "Bestellt" & "Archiv"
+          const orderGroups = window.products.reduce((acc, p) => {
+              if (p.orderNumber) {
+                  acc[p.orderNumber] = acc[p.orderNumber] || [];
+                  acc[p.orderNumber].push(p);
+              }
+              return acc;
+          }, {});
+
+          const orderedResults = [];
+          const arrivedResults = [];
+
+          for (const orderNumber in orderGroups) {
+              const group = orderGroups[orderNumber];
+              const firstItem = group[0];
+              const groupText = (orderNumber + ' ' + (firstItem.orderName || '') + ' ' + (firstItem.orderInfo || '') + ' ' + group.map(p => p.name).join(' ')).toLowerCase();
+              if (groupText.includes(term)) {
+                  if (group.every(p => p.status === 'arrived')) {
+                      arrivedResults.push({ orderNumber, group });
+                  } else {
+                      orderedResults.push({ orderNumber, group });
+                  }
+              }
+          }
+          
+          let html = '';
+          if (toOrderResults.length > 0) {
+              html += `<div class="search-result-category"><h3>Zu bestellen</h3>`;
+              toOrderResults.forEach(p => {
+                  html += `<div class="search-result-item" onclick="window.goToResult('toOrder', '${p.id}')">
+                      <div class="item-name">${p.name}</div>
+                      <div class="item-details">${p.info || `Von: ${p.colleagueName}`}</div>
+                  </div>`;
+              });
+              html += '</div>';
+          }
+          if (orderedResults.length > 0) {
+              html += `<div class="search-result-category"><h3>Bestellt</h3>`;
+              orderedResults.forEach(res => {
+                  html += `<div class="search-result-item" onclick="window.goToResult('ordered', '${res.orderNumber}')">
+                      <div class="item-name">Bestellnr: ${res.orderNumber}</div>
+                      <div class="item-details">${res.group.map(p => p.name).join(', ')}</div>
+                  </div>`;
+              });
+              html += '</div>';
+          }
+          if (arrivedResults.length > 0) {
+              html += `<div class="search-result-category"><h3>Archiv</h3>`;
+              arrivedResults.forEach(res => {
+                  html += `<div class="search-result-item" onclick="window.goToResult('arrived', '${res.orderNumber}')">
+                      <div class="item-name">Bestellnr: ${res.orderNumber}</div>
+                      <div class="item-details">${res.group.map(p => p.name).join(', ')}</div>
+                  </div>`;
+              });
+              html += '</div>';
+          }
+
+          if (html === '') {
+              html = '<p style="text-align:center; color: #757575; padding: 20px 0;">Keine Ergebnisse gefunden.</p>';
+          }
+
+          resultsContainer.innerHTML = html;
+      };
+
+      window.goToResult = function(pageId, itemId) {
+          // Reset search
+          document.getElementById('globalSearchInput').value = '';
+          document.getElementById('globalSearchResults').style.display = 'none';
+          document.getElementById('tabsContainer').style.display = 'block';
+
+          // Switch to the correct tab
+          window.showPage(pageId);
+
+          // Find and highlight the element
+          const elementId = (pageId === 'toOrder') ? `item-${itemId}` : `order-group-${itemId.replace(/[^a-zA-Z0-9]/g, '-')}`;
+          const element = document.getElementById(elementId);
+
+          if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              element.classList.add('highlight');
+              setTimeout(() => {
+                  element.classList.remove('highlight');
+              }, 2000);
+          }
+      };
+
+
+      // --- EVENT LISTENERS ---
+      document.getElementById("globalSearchInput").addEventListener("keyup", window.performGlobalSearch);
+
+      document.getElementById("btnAdd").addEventListener("click", window.openAddModal);
+      document.getElementById("btnBulkOrderTop").addEventListener("click", window.openBulkOrderModal);
+      document.getElementById("btnBulkOrderBottom").addEventListener("click", window.openBulkOrderModal); // New button
+      document.getElementById("btnCloseModal").addEventListener("click", window.closeModal);
+      document.getElementById("btnCloseCameraModal").addEventListener("click", window.closeCameraModal);
+      document.getElementById("btnClosePhotoModal").addEventListener("click", window.closePhotoModal);
+      // NUOVO CODICE: Listener per il pulsante delle notifiche
+      document.getElementById("btnEnableNotifications").addEventListener("click", subscribeUser);
+
+      // --- INITIAL LOAD ---
+      window.loadProductsFromFirebase();
+      checkNotificationPermission(); // Controlla lo stato delle notifiche al caricamento
+    });
+  </script>
+</body>
+</html>
